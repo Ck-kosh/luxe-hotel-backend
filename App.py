@@ -1,15 +1,19 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import bookings, service_requests, auth_payment, admin
+from routers import bookings, services, auth_payment, admin
 from database import init_db  # Import the init function
 
 app = FastAPI(title="Luxe Hotel API", version="1.0.0")
 
-# Create tables automatically when server starts
-@app.on_event("startup")
-def startup_event():
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     init_db()
     print("✅ Database tables ready in bookings.db")
+    yield
+
+app = FastAPI(title="Luxe Hotel API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,10 +24,10 @@ app.add_middleware(
 )
 
 # Register all 4 member routers
-app.include_router(bookings.router, prefix="/bookings", tags=["1. Bookings - Member 1"])
-app.include_router(service_requests.router, prefix="/service-requests", tags=["2. Services - Member 2"])
-app.include_router(auth_payment.router, prefix="/auth", tags=["3. Auth/Payment - Member 3"])
-app.include_router(admin.router, prefix="/admin", tags=["4. Admin - Member 4"])
+app.include_router(bookings.router, prefix="/bookings")
+app.include_router(services.router, prefix="/services")
+app.include_router(auth_payment.router, prefix="/auth")
+app.include_router(admin.router, prefix="/admin")
 
 @app.get("/")
 def home():
