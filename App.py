@@ -1,59 +1,78 @@
-from fastapi import FastAPI, HTTPException 
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Depends, HTTPException
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
-import sqlite3
 
-app = FastAPI(title="Luxe Hotel API", docs_url="/docs")
+app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"], # Vite default port
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# 1. Database setup
+DATABASE_URL = "sqlite:///./bookings.db"
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
 
-class BookingUpdate(BaseModel):
-    status: str
+# 2. Database table model
+class BookingDB(Base):
+    __tablename__ = "bookings"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    room = Column(String)
+    check_in = Column(String)
 
+Base.metadata.create_all(bind=engine)
+
+# 3. Pydantic model for API
+class BookingCreate(BaseModel):
+    name: str
+    room: str
+    check_in: str
+
+# 4. Dependency to get DB session
 def get_db():
-    conn = sqlite3.connect('hotel.db', check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-def init_db():
-    conn = get_db()
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS bookings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            guest_name TEXT NOT NULL,
-            room_number TEXT NOT NULL,
-            check_in TEXT,
-            check_out TEXT,
-            status TEXT DEFAULT 'pending'
-        )
-    ''')
-    if conn.execute('SELECT COUNT(*) FROM bookings').fetchone()[0] == 0:
-        conn.executemany(
-            "INSERT INTO bookings (guest_name, room_number, check_in, check_out, status) VALUES (?,?,?,?,?)",
-            [('John Doe', 'Deluxe 201', '2026-04-15', '2026-04-18', 'confirmed'),
-             ('Sarah Kim', 'Suite 305', '2026-04-16', '2026-04-20', 'pending')]
-        )
-    conn.commit()
-    conn.close()
-
-init_db()
-
+# 5. GET all bookings - now reads from DB
 @app.get("/bookings")
-def get_bookings():
-    conn = get_db()
-    rows = conn.execute("SELECT * FROM bookings").fetchall()
-    return [dict(row) for row in rows]
+def get_bookings(db: Session = Depends(get_db)):
+    return db.query(BookingDB).all()
 
+# 6. POST new booking - now saves to DB
+@app.post("/bookings")
+def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
+    db_booking = BookingDB(**booking.dict())
+    db.add(db_booking)
+    db.commit()
+    db.refresh(db_booking)
+    return db_booking
+
+
+
+# PATCH = update booking
 @app.patch("/bookings/{booking_id}")
-def update_booking(booking_id: int, update: BookingUpdate):
-    conn = get_db()
-    cur = conn.execute("UPDATE bookings SET status=? WHERE id=?", (update.status, booking_id))
-    conn.commit()
-    if cur.rowcount == 0:
+def update_booking(booking_id: int, booking: BookingCreate, db: Session = Depends(get_db)):
+    db_booking = db.query(BookingDB).filter(BookingDB.id == booking_id).first()
+    if not db_booking:
         raise HTTPException(status_code=404, detail="Booking not found")
-    return {"success": True, "id": booking_id, "status": update.status}
+    
+    db_booking.name = booking.name
+    db_booking.room = booking.room
+    db_booking.check_in = booking.check_in
+    db.commit()
+    db.refresh(db_booking)
+    return db_booking
+
+# DELETE = cancel booking  
+@app.delete("/bookings/{booking_id}")
+def delete_booking(booking_id: int, db: Session = Depends(get_db)):
+    db_booking = db.query(BookingDB).filter(BookingDB.id == booking_id).first()
+    if not db_booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    db.delete(db_booking)
+    db.commit()
+    return {"message": f"Booking {booking_id} deleted"}
