@@ -23,5 +23,8 @@ def housekeeping():
 
 @router.get("/amenities")
 def amenities():
-    return {"message": "amenities"}
+    return {"message": "Amenities"}
 
+@router.get("/request-history")
+def request_history():
+    return {"message": "Request History"}
