@@ -8,7 +8,7 @@ app = FastAPI()
 # CORS - lets your React frontend talk to backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "*"], # add your React IP later
+    allow_origins=["http://localhost:5173", "http://192.168.1.108:5173", "*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -48,9 +48,9 @@ def home():
 
 @app.get("/bookings")
 def get_bookings():
-    cursor.execute("SELECT * FROM bookings")
+    cursor.execute("SELECT id, name, room, check_in FROM bookings")
     rows = cursor.fetchall()
-    return [{"id": r[0], "guest_name": r[1], "room_number": r[2], "check_in": r[3], "check_out": r[4]} for r in rows]
+    return [{"id": r[0], "guest_name": r[1], "room_number": r[2], "check_in": r[3]} for r in rows]
 
 @app.post("/bookings")
 def create_booking(booking: Booking):
