@@ -1,78 +1,84 @@
-from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy import create_engine, Column, Integer, String
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import sqlite3
 
 app = FastAPI()
 
-# 1. Database setup
-DATABASE_URL = "sqlite:///./bookings.db"
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+# CORS - lets your React frontend talk to backend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "*"], # add your React IP later
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# 2. Database table model
-class BookingDB(Base):
-    __tablename__ = "bookings"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String)
-    room = Column(String)
-    check_in = Column(String)
+# Database setup
+conn = sqlite3.connect("bookings.db", check_same_thread=False)
+cursor = conn.cursor()
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS bookings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guest_name TEXT,
+    room_number INTEGER,
+    check_in TEXT,
+    check_out TEXT
+)
+""")
+conn.commit()
 
-Base.metadata.create_all(bind=engine)
-
-# 3. Pydantic model for API
-class BookingCreate(BaseModel):
-    name: str
-    room: str
+# Model for validation
+class Booking(BaseModel):
+    guest_name: str
+    room_number: int
     check_in: str
+    check_out: str
 
-# 4. Dependency to get DB session
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+class BookingUpdate(BaseModel):
+    guest_name: str | None = None
+    room_number: int | None = None
+    check_in: str | None = None
+    check_out: str | None = None
 
-# 5. GET all bookings - now reads from DB
+# Routes
+@app.get("/")
+def home():
+    return {"message": "Hotel API running. Go to /docs to test"}
+
 @app.get("/bookings")
-def get_bookings(db: Session = Depends(get_db)):
-    return db.query(BookingDB).all()
+def get_bookings():
+    cursor.execute("SELECT * FROM bookings")
+    rows = cursor.fetchall()
+    return [{"id": r[0], "guest_name": r[1], "room_number": r[2], "check_in": r[3], "check_out": r[4]} for r in rows]
 
-# 6. POST new booking - now saves to DB
 @app.post("/bookings")
-def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
-    db_booking = BookingDB(**booking.dict())
-    db.add(db_booking)
-    db.commit()
-    db.refresh(db_booking)
-    return db_booking
+def create_booking(booking: Booking):
+    cursor.execute(
+        "INSERT INTO bookings (guest_name, room_number, check_in, check_out) VALUES (?,?,?)",
+        (booking.guest_name, booking.room_number, booking.check_in, booking.check_out)
+    )
+    conn.commit()
+    return {"id": cursor.lastrowid, **booking.dict()}
 
-
-
-# PATCH = update booking
 @app.patch("/bookings/{booking_id}")
-def update_booking(booking_id: int, booking: BookingCreate, db: Session = Depends(get_db)):
-    db_booking = db.query(BookingDB).filter(BookingDB.id == booking_id).first()
-    if not db_booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
-    
-    db_booking.name = booking.name
-    db_booking.room = booking.room
-    db_booking.check_in = booking.check_in
-    db.commit()
-    db.refresh(db_booking)
-    return db_booking
+def update_booking(booking_id: int, booking: BookingUpdate):
+    # Build dynamic update
+    fields = {k: v for k, v in booking.dict().items() if v is not None}
+    if not fields:
+        raise HTTPException(status_code=400, detail="No fields to update")
 
-# DELETE = cancel booking  
-@app.delete("/bookings/{booking_id}")
-def delete_booking(booking_id: int, db: Session = Depends(get_db)):
-    db_booking = db.query(BookingDB).filter(BookingDB.id == booking_id).first()
-    if not db_booking:
+    query = f"UPDATE bookings SET {', '.join([f'{k}=?' for k in fields.keys()])} WHERE id=?"
+    cursor.execute(query, list(fields.values()) + [booking_id])
+    conn.commit()
+    if cursor.rowcount == 0:
         raise HTTPException(status_code=404, detail="Booking not found")
-    
-    db.delete(db_booking)
-    db.commit()
-    return {"message": f"Booking {booking_id} deleted"}
+    return {"message": "Booking updated"}
+
+@app.delete("/bookings/{booking_id}")
+def delete_booking(booking_id: int):
+    cursor.execute("DELETE FROM bookings WHERE id=?", (booking_id,))
+    conn.commit()
+    if cursor.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    return {"message": "Booking deleted"}
