@@ -27,5 +27,5 @@ app.add_middleware(
 app.include_router(bookings.router, prefix="/bookings")
 app.include_router(services.router, prefix="/services")
 app.include_router(auth.router, prefix="/auth")
-app.include_router(payments.router, prefix="/auth")
+app.include_router(payments.router, prefix="/payments")
 app.include_router(admin.router, prefix="/admin")
