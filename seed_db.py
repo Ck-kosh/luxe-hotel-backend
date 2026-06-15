@@ -1,34 +1,28 @@
-import sqlite3
-from database import DB_NAME, init_db
+from sqlalchemy.orm import Session
+from main import SessionLocal, Room, engine, Base
 
-# Ensure tables exist
-init_db()
+# Create tables
+Base.metadata.create_all(bind=engine)
 
 def seed():
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
+    db = SessionLocal()
     
     # Check if we already have rooms
-    c.execute("SELECT COUNT(*) FROM rooms")
-    if c.fetchone()[0] > 0:
+    if db.query(Room).count() > 0:
         print("Database already seeded.")
-        conn.close()
         return
 
     sample_rooms = [
-        ("Deluxe Ocean View", 1, True, 15000.0, 5, 5),
-        ("Family Suite", 2, True, 25000.0, 3, 3),
-        ("Standard Room", 1, False, 8000.0, 10, 10),
-        ("Penthouse", 3, True, 50000.0, 1, 1),
+        Room(name="Deluxe Ocean View", bedrooms=1, internet=True, price=15000.0, total_quantity=5, available_quantity=5),
+        Room(name="Family Suite", bedrooms=2, internet=True, price=25000.0, total_quantity=3, available_quantity=3),
+        Room(name="Standard Room", bedrooms=1, internet=False, price=8000.0, total_quantity=10, available_quantity=10),
+        Room(name="Penthouse", bedrooms=3, internet=True, price=50000.0, total_quantity=1, available_quantity=1),
     ]
 
-    c.executemany(
-        "INSERT INTO rooms (name, bedrooms, internet, price, total_quantity, available_quantity) VALUES (?, ?, ?, ?, ?, ?)",
-        sample_rooms
-    )
-    conn.commit()
+    db.add_all(sample_rooms)
+    db.commit()
     print("Database seeded successfully with sample rooms.")
-    conn.close()
+    db.close()
 
 if __name__ == "__main__":
     seed()
