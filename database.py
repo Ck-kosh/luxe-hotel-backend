@@ -54,6 +54,16 @@ def init_db():
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )""")
 
+    c.execute("""CREATE TABLE IF NOT EXISTS rooms (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        bedrooms INTEGER NOT NULL,
+        internet BOOLEAN NOT NULL,
+        price REAL NOT NULL,
+        total_quantity INTEGER NOT NULL,
+        available_quantity INTEGER NOT NULL
+    )""")
+
     conn.commit()
     conn.close()
     print("Database tables created in bookings.db")
