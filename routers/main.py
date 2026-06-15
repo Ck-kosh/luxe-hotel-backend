@@ -8,13 +8,13 @@ from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, Float, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker, Session, relationship
 
-# --- Database Setup ---
+
 SQLALCHEMY_DATABASE_URL = "sqlite:///./hotel.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# --- SQLAlchemy Models ---
+
 class Room(Base):
     __tablename__ = "rooms"
     id = Column(Integer, primary_key=True, index=True)
@@ -29,8 +29,8 @@ class Booking(Base):
     __tablename__ = "bookings"
     id = Column(Integer, primary_key=True, index=True)
     total_price = Column(Float)
-    status = Column(String, default="pending") # pending, confirmed, paid, failed
-    checkout_request_id = Column(String, nullable=True) # To track M-Pesa transaction
+    status = Column(String, default="pending") 
+    checkout_request_id = Column(String, nullable=True)
     items = relationship("BookingItem", back_populates="booking")
 
 class BookingItem(Base):
@@ -86,10 +86,10 @@ app = FastAPI(title="Hotel Booking & M-Pesa API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["http://localhost:5173"],
+    allow_headers=["http://localhost:5173"],
 )
 
 # Dependency
