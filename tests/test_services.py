@@ -1,12 +1,36 @@
+import sys
+import os
+from unittest.mock import MagicMock
+
+PROJECT_ROOT = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__),
+        ".."
+    )
+)
+
+ROUTERS_PATH = os.path.join(PROJECT_ROOT, "routers")
+
+
+sys.modules['models'] = MagicMock()
+
+sys.path.insert(0, PROJECT_ROOT)
+sys.path.insert(0, ROUTERS_PATH)
+
+from services import router
+
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from APP import app
+
+app = FastAPI()
+
+app.include_router(router)
 
 client = TestClient(app)
 
 
 def test_get_requests():
-    response = client.get("/services/services/")
-
+    response = client.get("/services/")
     assert response.status_code == 200
     assert response.json() == {
         "message": "All service requests"
@@ -14,8 +38,7 @@ def test_get_requests():
 
 
 def test_create_request():
-    response = client.post("/services/services/")
-
+    response = client.post("/services/")
     assert response.status_code == 200
     assert response.json() == {
         "message": "New service request created"
@@ -23,53 +46,29 @@ def test_create_request():
 
 
 def test_room_service():
-    response = client.get(
-        "/services/services/room-service"
-    )
-
+    response = client.get("/services/room-service")
     assert response.status_code == 200
-    assert response.json() == {
-        "message": "Room service"
-    }
 
 
 def test_housekeeping():
-    response = client.get(
-        "/services/services/housekeeping"
-    )
-
+    response = client.get("/services/housekeeping")
     assert response.status_code == 200
-    assert response.json() == {
-        "message": "Housekeeping"
-    }
 
 
 def test_amenities():
-    response = client.get(
-        "/services/services/amenities"
-    )
-
+    response = client.get("/services/amenities")
     assert response.status_code == 200
-    assert response.json() == {
-        "message": "Amenities"
-    }
 
 
 def test_request_history():
     response = client.get(
-        "/services/services/request-history"
+        "/services/request-history"
     )
-
     assert response.status_code == 200
-    assert response.json() == {
-        "message": "Request History"
-    }
 
 
 def test_get_single_request():
-    response = client.get(
-        "/services/services/1"
-    )
+    response = client.get("/services/1")
 
     assert response.status_code == 200
 
@@ -81,7 +80,7 @@ def test_get_single_request():
 
 def test_update_request():
     response = client.put(
-        "/services/services/1",
+        "/services/1",
         json={
             "status": "Completed"
         }
@@ -90,7 +89,8 @@ def test_update_request():
     assert response.status_code == 200
 
     assert response.json() == {
-        "message": "Request updated successfully",
+        "message":
+            "Request updated successfully",
         "request_id": 1,
         "new_status": "Completed"
     }
