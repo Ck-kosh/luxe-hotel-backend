@@ -18,7 +18,8 @@ app = FastAPI(title="Luxe Hotel API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http:localhost:5173"],
+    # allow all origins during local development (adjust in production)
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
