@@ -50,7 +50,14 @@ def init_db():
         user_id INTEGER NOT NULL,
         booking_id INTEGER NOT NULL,
         amount REAL NOT NULL,
-        status TEXT DEFAULT 'Pending'
+        phone_number TEXT NOT NULL,
+        status TEXT DEFAULT 'Pending',
+        merchant_request_id TEXT,
+        checkout_request_id TEXT,
+        result_code TEXT,
+        result_desc TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     )""")
 
     c.execute("""CREATE TABLE IF NOT EXISTS contact_messages (
