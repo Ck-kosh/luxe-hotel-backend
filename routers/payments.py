@@ -267,6 +267,17 @@ async def check_payment_status(checkout_request_id: str):
             detail=f"Error: {str(e)}"
         )
 
+@router.post("/query-status", response_model=PaymentStatusResponse)
+async def query_payment_status(payload: dict):
+    """Legacy alias to query payment status by checkout request ID."""
+    checkout_request_id = payload.get('checkoutRequestId') or payload.get('checkout_request_id')
+    if not checkout_request_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="checkoutRequestId is required"
+        )
+    return await check_payment_status(checkout_request_id)
+
 @router.post("/process")
 def process_payment():
     """Legacy endpoint - use /stk-push instead"""
