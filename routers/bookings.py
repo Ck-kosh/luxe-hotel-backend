@@ -4,6 +4,7 @@ from database import get_db
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
+
 class BookingCreate(BaseModel):
     guest_name: str
     email: str
