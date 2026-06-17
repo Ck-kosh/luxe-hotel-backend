@@ -22,9 +22,13 @@ def init_db():
     c.execute("""CREATE TABLE IF NOT EXISTS bookings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         guest_name TEXT NOT NULL,
+        email TEXT,
+        phone TEXT,
         room_number INTEGER NOT NULL,
         check_in TEXT NOT NULL,
         check_out TEXT NOT NULL,
+        guests INTEGER DEFAULT 1,
+        status TEXT DEFAULT 'pending',
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )""")
 
